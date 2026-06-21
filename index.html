@@ -7,8 +7,8 @@
 
 <style>
 :root {
-    --bg-main: #060913;
-    --bg-card: rgba(10, 14, 26, 0.4); /* Un poco más opaco para que se lea bien sobre el mapa */
+    --bg-main: #05070f;
+    --bg-card: rgba(10, 14, 26, 0.4);
     --bg-card-hover: rgba(0, 247, 255, 0.12);
     --accent: #00f7ff;
     --accent-sec: #ff2a5f;
@@ -21,9 +21,8 @@ body {
     margin: 0;
     font-family: 'Segoe UI', Roboto, sans-serif;
     background-color: var(--bg-main);
-    /* FONTO DE PLANISFERIO SVG ESTILIZADO */
     background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 500" opacity="0.12"><path fill="%2300f7ff" d="M150,150 Q180,120 220,130 T300,160 T380,120 T420,180 T500,200 T600,150 T700,180 T800,130 T900,160 L920,250 T850,320 T750,380 T650,350 T550,420 T400,390 T300,430 T200,380 T100,280 Z M250,300 Q220,330 180,350 T120,400 L110,430 T160,450 T250,410 Z M750,320 Q800,350 850,380 T900,420 L920,400 Z"/></svg>'), 
-                     linear-gradient(180deg, #060913 0%, #0c1428 100%);
+                     linear-gradient(180deg, #05070f 0%, #0a1120 100%);
     background-repeat: no-repeat;
     background-position: center 40%;
     background-size: 85% auto;
@@ -36,7 +35,6 @@ body {
     box-sizing: border-box;
 }
 
-/* CONTENEDOR PRINCIPAL EN GRID */
 .app-grid {
     width: 100%;
     max-width: 1200px;
@@ -46,10 +44,9 @@ body {
     grid-template-rows: auto 1fr;
     gap: 30px;
     align-items: start;
-    z-index: 1; /* Asegura quedar por encima del fondo */
+    z-index: 1;
 }
 
-/* APP HEADER */
 .header {
     grid-column: 1 / 2;
     grid-row: 1 / 2;
@@ -63,7 +60,6 @@ body {
     text-shadow: 0 0 15px rgba(0, 247, 255, 0.4);
 }
 
-/* SEARCH BAR */
 .search-container {
     grid-column: 2 / 3;
     grid-row: 1 / 2;
@@ -105,15 +101,39 @@ input:focus {
 canvas {
     background: transparent;
     margin-bottom: 25px;
-    filter: drop-shadow(0 0 35px rgba(0, 247, 255, 0.2));
 }
 
 #countryName {
     font-size: 28px;
     font-weight: 700;
-    margin-bottom: 8px;
-    letter-spacing: 0.5px;
+    margin-bottom: 4px;
     text-shadow: 0 2px 10px rgba(0,0,0,0.5);
+}
+
+/* NUEVO: Diferencia horaria */
+#timeDiff {
+    font-size: 13px;
+    color: var(--accent);
+    background: rgba(0, 247, 255, 0.1);
+    padding: 4px 12px;
+    border-radius: 20px;
+    margin-bottom: 15px;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    border: 1px solid rgba(0, 247, 255, 0.15);
+}
+
+/* NUEVO: Contenedor digital con estado Día/Noche */
+.digital-wrap {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    margin: 5px 0;
+}
+
+#dayNightIcon {
+    font-size: 28px;
+    filter: drop-shadow(0 0 8px rgba(255,255,255,0.3));
 }
 
 #time {
@@ -122,7 +142,6 @@ canvas {
     font-weight: 700;
     font-family: 'Courier New', Courier, monospace;
     letter-spacing: 2px;
-    margin: 10px 0;
     text-shadow: 0 0 25px rgba(0, 247, 255, 0.4), 0 4px 10px rgba(0,0,0,0.8);
 }
 
@@ -133,9 +152,10 @@ canvas {
     letter-spacing: 2px;
     font-weight: 600;
     text-shadow: 0 2px 5px rgba(0,0,0,0.5);
+    margin-top: 5px;
 }
 
-/* SECCIÓN LATERAL DERECHA (LISTA DE PAÍSES) */
+/* SECCIÓN LATERAL DERECHA */
 .list-section {
     grid-column: 2 / 3;
     grid-row: 2 / 3;
@@ -144,7 +164,7 @@ canvas {
     border-radius: 24px;
     padding: 15px;
     box-sizing: border-box;
-    backdrop-filter: blur(12px); /* Blur aumentado para aislar el texto del fondo */
+    backdrop-filter: blur(12px);
     box-shadow: 0 20px 40px rgba(0,0,0,0.4);
 }
 
@@ -208,10 +228,9 @@ canvas {
     width: 100%;
 }
 
-/* RESPONSIVE */
 @media (max-width: 850px) {
     body {
-        background-size: 140% auto; /* Agranda el mapa en móviles para que no se comprima */
+        background-size: 140% auto;
         background-position: center 20%;
     }
     .app-grid {
@@ -260,7 +279,13 @@ canvas {
     <div class="clock-section">
         <canvas id="clock" width="300" height="300"></canvas>
         <div id="countryName"></div>
-        <div id="time"></div>
+        <div id="timeDiff"></div>
+        
+        <div class="digital-wrap">
+            <span id="dayNightIcon">☀️</span>
+            <div id="time"></div>
+        </div>
+        
         <div id="date"></div>
     </div>
 
@@ -310,6 +335,28 @@ setCountry(current);
 function setCountry(c){
     current = c;
     document.getElementById("countryName").innerHTML = `${c.f} ${c.n}`;
+    updateRelativeTime(c.t);
+}
+
+// NUEVO: Calcular la diferencia horaria dinámica en tiempo real
+function updateRelativeTime(timeZone) {
+    try {
+        const local = new Date();
+        const target = new Date(local.toLocaleString("en-US", { timeZone: timeZone }));
+        
+        // Obtener la diferencia de horas exacta redondeando
+        const diffMs = target - local;
+        const diffHours = Math.round(diffMs / (1000 * 60 * 60));
+        
+        const textEl = document.getElementById("timeDiff");
+        if (diffHours === 0) {
+            textEl.innerText = "Misma hora que tu región local";
+        } else {
+            textEl.innerText = `${diffHours > 0 ? '+' : ''}${diffHours} horas respecto a tu hora local`;
+        }
+    } catch(e) {
+        document.getElementById("timeDiff").innerText = "Zona horaria detectada";
+    }
 }
 
 const canvas = document.getElementById("clock");
@@ -327,16 +374,28 @@ function draw(){
 
         let s = now.getSeconds();
         let m = now.getMinutes();
-        let h = now.getHours() % 12;
+        let h = now.getHours();
 
+        // NUEVO: Cambiar icono dinámico según hora (Sol / Luna)
+        const iconEl = document.getElementById("dayNightIcon");
+        if(h >= 6 && h < 18) {
+            iconEl.innerText = "☀️";
+        } else {
+            iconEl.innerText = "🌙";
+        }
+
+        h = h % 12;
+
+        // Esfera base del reloj
         ctx.beginPath();
         ctx.arc(0, 0, r - 12, 0, Math.PI * 2);
-        ctx.fillStyle = "rgba(6, 9, 19, 0.75)"; /* Fondo oscuro para dar contraste */
+        ctx.fillStyle = "rgba(5, 7, 15, 0.8)"; 
         ctx.fill();
         ctx.lineWidth = 3;
         ctx.strokeStyle = "rgba(0, 247, 255, 0.4)";
         ctx.stroke();
 
+        // 12 marcas de las horas
         for (let i = 0; i < 12; i++) {
             ctx.beginPath();
             const esPrincipal = (i % 3 === 0);
@@ -348,15 +407,29 @@ function draw(){
             ctx.rotate(Math.PI / 6);
         }
 
+        // NUEVO: Efecto Glow (Brillo neón) nativo en Canvas para las agujas
+        ctx.shadowBlur = 10;
+        
+        // Aguja de las horas (Glow blanco)
+        ctx.shadowColor = "#ffffff";
         drawHand((h * Math.PI / 6) + (m * Math.PI / 360), r * 0.45, 6, "#ffffff");
+        
+        // Aguja de los minutos (Glow cian)
+        ctx.shadowColor = "#00f7ff";
         drawHand((m * Math.PI / 30), r * 0.7, 4, "#00f7ff");
+        
+        // Aguja de los segundos (Glow rosa)
+        ctx.shadowColor = "#ff2a5f";
         drawHand((s * Math.PI / 30), r * 0.8, 2, "#ff2a5f");
 
+        // Quitar el shadow para el resto de elementos y pintar el centro
+        ctx.shadowBlur = 0;
         ctx.beginPath();
         ctx.arc(0, 0, 5, 0, Math.PI * 2);
         ctx.fillStyle = "#ff2a5f";
         ctx.fill();
 
+        // Render digital
         document.getElementById("time").innerText = now.toLocaleTimeString('es-ES', {hour12: false});
         
         const opcionesFecha = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
@@ -382,6 +455,9 @@ function drawHand(pos, len, w, color){
     ctx.stroke();
     ctx.rotate(-pos);
 }
+
+// Actualizar la diferencia de horas de fondo cada tanto por si cambia la hora del equipo local
+setInterval(() => updateRelativeTime(current.t), 60000);
 
 draw();
 
