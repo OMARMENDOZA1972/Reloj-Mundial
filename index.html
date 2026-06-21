@@ -1,0 +1,398 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ultra World Clock 195</title>
+
+<style>
+:root {
+    --bg-main: #060913;
+    --bg-card: rgba(10, 14, 26, 0.4); /* Un poco más opaco para que se lea bien sobre el mapa */
+    --bg-card-hover: rgba(0, 247, 255, 0.12);
+    --accent: #00f7ff;
+    --accent-sec: #ff2a5f;
+    --text-main: #ffffff;
+    --text-muted: #64748b;
+    --border-color: rgba(255, 255, 255, 0.08);
+}
+
+body {
+    margin: 0;
+    font-family: 'Segoe UI', Roboto, sans-serif;
+    background-color: var(--bg-main);
+    /* FONTO DE PLANISFERIO SVG ESTILIZADO */
+    background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 500" opacity="0.12"><path fill="%2300f7ff" d="M150,150 Q180,120 220,130 T300,160 T380,120 T420,180 T500,200 T600,150 T700,180 T800,130 T900,160 L920,250 T850,320 T750,380 T650,350 T550,420 T400,390 T300,430 T200,380 T100,280 Z M250,300 Q220,330 180,350 T120,400 L110,430 T160,450 T250,410 Z M750,320 Q800,350 850,380 T900,420 L920,400 Z"/></svg>'), 
+                     linear-gradient(180deg, #060913 0%, #0c1428 100%);
+    background-repeat: no-repeat;
+    background-position: center 40%;
+    background-size: 85% auto;
+    background-attachment: fixed;
+    color: var(--text-main);
+    min-height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    box-sizing: border-box;
+}
+
+/* CONTENEDOR PRINCIPAL EN GRID */
+.app-grid {
+    width: 100%;
+    max-width: 1200px;
+    padding: 30px;
+    display: grid;
+    grid-template-columns: 1fr 380px;
+    grid-template-rows: auto 1fr;
+    gap: 30px;
+    align-items: start;
+    z-index: 1; /* Asegura quedar por encima del fondo */
+}
+
+/* APP HEADER */
+.header {
+    grid-column: 1 / 2;
+    grid-row: 1 / 2;
+    font-size: 28px;
+    font-weight: 800;
+    letter-spacing: 0.5px;
+    color: #ffffff;
+}
+.header span {
+    color: var(--accent);
+    text-shadow: 0 0 15px rgba(0, 247, 255, 0.4);
+}
+
+/* SEARCH BAR */
+.search-container {
+    grid-column: 2 / 3;
+    grid-row: 1 / 2;
+    width: 100%;
+}
+
+input {
+    width: 100%;
+    padding: 14px 20px;
+    border-radius: 14px;
+    border: 1px solid var(--border-color);
+    background: rgba(10, 14, 26, 0.6);
+    color: white;
+    outline: none;
+    font-size: 15px;
+    box-sizing: border-box;
+    transition: all 0.3s ease;
+    backdrop-filter: blur(8px);
+}
+
+input:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 15px rgba(0, 247, 255, 0.15);
+    background: rgba(10, 14, 26, 0.8);
+}
+
+/* SECCIÓN DEL RELOJ */
+.clock-section {
+    grid-column: 1 / 2;
+    grid-row: 2 / 3;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 40px;
+    min-height: 500px;
+}
+
+canvas {
+    background: transparent;
+    margin-bottom: 25px;
+    filter: drop-shadow(0 0 35px rgba(0, 247, 255, 0.2));
+}
+
+#countryName {
+    font-size: 28px;
+    font-weight: 700;
+    margin-bottom: 8px;
+    letter-spacing: 0.5px;
+    text-shadow: 0 2px 10px rgba(0,0,0,0.5);
+}
+
+#time {
+    color: var(--accent);
+    font-size: 56px;
+    font-weight: 700;
+    font-family: 'Courier New', Courier, monospace;
+    letter-spacing: 2px;
+    margin: 10px 0;
+    text-shadow: 0 0 25px rgba(0, 247, 255, 0.4), 0 4px 10px rgba(0,0,0,0.8);
+}
+
+#date {
+    color: var(--text-muted);
+    font-size: 15px;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    font-weight: 600;
+    text-shadow: 0 2px 5px rgba(0,0,0,0.5);
+}
+
+/* SECCIÓN LATERAL DERECHA (LISTA DE PAÍSES) */
+.list-section {
+    grid-column: 2 / 3;
+    grid-row: 2 / 3;
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: 24px;
+    padding: 15px;
+    box-sizing: border-box;
+    backdrop-filter: blur(12px); /* Blur aumentado para aislar el texto del fondo */
+    box-shadow: 0 20px 40px rgba(0,0,0,0.4);
+}
+
+.list {
+    width: 100%;
+    height: 60vh;
+    overflow-y: auto;
+    padding-right: 5px;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(105px, 1fr));
+    gap: 8px;
+    box-sizing: border-box;
+}
+
+.list::-webkit-scrollbar {
+    width: 5px;
+}
+.list::-webkit-scrollbar-track {
+    background: transparent;
+}
+.list::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 10px;
+}
+.list::-webkit-scrollbar-thumb:hover {
+    background: var(--accent);
+}
+
+.item {
+    padding: 12px 6px;
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid transparent;
+    border-radius: 12px;
+    text-align: center;
+    cursor: pointer;
+    font-size: 12px;
+    transition: all 0.2s ease;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+}
+
+.item:hover {
+    background: var(--bg-card-hover);
+    border-color: rgba(0, 247, 255, 0.2);
+    transform: translateY(-2px);
+}
+
+.item .flag {
+    font-size: 22px;
+}
+
+.item .name {
+    font-weight: 500;
+    color: #cbd5e1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    width: 100%;
+}
+
+/* RESPONSIVE */
+@media (max-width: 850px) {
+    body {
+        background-size: 140% auto; /* Agranda el mapa en móviles para que no se comprima */
+        background-position: center 20%;
+    }
+    .app-grid {
+        grid-template-columns: 1fr;
+        grid-template-rows: auto auto auto auto;
+        padding: 15px;
+        gap: 15px;
+    }
+    .header {
+        grid-column: 1 / 2;
+        grid-row: 1 / 2;
+        text-align: center;
+    }
+    .search-container {
+        grid-column: 1 / 2;
+        grid-row: 2 / 3;
+    }
+    .clock-section {
+        grid-column: 1 / 2;
+        grid-row: 3 / 4;
+        min-height: auto;
+        padding: 20px 0;
+    }
+    #time {
+        font-size: 42px;
+    }
+    .list-section {
+        grid-column: 1 / 2;
+        grid-row: 4 / 5;
+    }
+    .list {
+        height: 35vh;
+    }
+}
+</style>
+</head>
+<body>
+
+<div class="app-grid">
+    <div class="header">🌍 Ultra World <span>Clock</span></div>
+
+    <div class="search-container">
+        <input id="search" placeholder="🔍 Buscar país..." onkeyup="filter()">
+    </div>
+
+    <div class="clock-section">
+        <canvas id="clock" width="300" height="300"></canvas>
+        <div id="countryName"></div>
+        <div id="time"></div>
+        <div id="date"></div>
+    </div>
+
+    <div class="list-section">
+        <div class="list" id="list"></div>
+    </div>
+</div>
+
+<script>
+const countries = [
+    {n:"Afganistán",t:"Asia/Kabul",f:"🇦🇫"},{n:"Albania",t:"Europe/Tirane",f:"🇦🇱"},{n:"Alemania",t:"Europe/Berlin",f:"🇩🇪"},{n:"Andorra",t:"Europe/Andorra",f:"🇦🇩"},{n:"Angola",t:"Africa/Luanda",f:"🇦🇴"},{n:"Antigua y Barbuda",t:"America/Antigua",f:"🇦🇬"},{n:"Arabia Saudita",t:"Asia/Riyadh",f:"🇸🇦"},{n:"Argelia",t:"Africa/Algiers",f:"🇩🇿"},{n:"Argentina",t:"America/Argentina/Buenos_Aires",f:"🇦🇷"},{n:"Armenia",t:"Asia/Yerevan",f:"🇦🇲"},
+    {n:"Australia",t:"Australia/Sydney",f:"🇦🇺"},{n:"Austria",t:"Europe/Vienna",f:"🇦🇹"},{n:"Azerbaiyán",t:"Asia/Baku",f:"🇦🇿"},{n:"Bahamas",t:"America/Nassau",f:"🇧🇸"},{n:"Bangladés",t:"Asia/Dhaka",f:"🇧🇩"},{n:"Barbados",t:"America/Barbados",f:"🇧🇧"},{n:"Baréin",t:"Asia/Bahrain",f:"🇧🇭"},{n:"Bélgica",t:"Europe/Brussels",f:"🇧🇪"},{n:"Belice",t:"America/Belize",f:"🇧🇿"},{n:"Benín",t:"Africa/Porto-Novo",f:"🇧🇯"},
+    {n:"Bielorrusia",t:"Europe/Minsk",f:"🇧🇾"},{n:"Birmania",t:"Asia/Yangon",f:"🇲🇲"},{n:"Bolivia",t:"America/La_Paz",f:"🇧🇴"},{n:"Bosnia y Herzegovina",t:"Europe/Sarajevo",f:"🇧🇦"},{n:"Botsuana",t:"Africa/Gaborone",f:"🇧🇼"},{n:"Brasil",t:"America/Sao_Paulo",f:"🇧🇷"},{n:"Brunéi",t:"Asia/Brunei",f:"🇧🇳"},{n:"Bulgaria",t:"Europe/Sofia",f:"🇧🇬"},{n:"Burkina Faso",t:"Africa/Ouagadougou",f:"🇧🇫"},{n:"Burundi",t:"Africa/Bujumbura",f:"🇧🇮"},
+    {n:"Bután",t:"Asia/Thimphu",f:"🇧🇹"},{n:"Cabo Verde",t:"Atlantic/Cape_Verde",f:"🇨🇻"},{n:"Camboya",t:"Asia/Phnom_Penh",f:"🇰🇭"},{n:"Camerún",t:"Africa/Douala",f:"🇨🇲"},{n:"Canadá",t:"America/Toronto",f:"🇨🇦"},{n:"Catar",t:"Asia/Qatar",f:"🇶🇦"},{n:"Chad",t:"Africa/Ndjamena",f:"🇹🇩"},{n:"Chile",t:"America/Santiago",f:"🇨🇱"},{n:"China",t:"Asia/Shanghai",f:"🇨🇳"},{n:"Chipre",t:"Asia/Nicosia",f:"🇨🇾"},
+    {n:"Colombia",t:"America/Bogota",f:"🇨🇴"},{n:"Comoras",t:"Indian/Comoro",f:"🇰🇲"},{n:"Corea del Norte",t:"Asia/Pyongyang",f:"🇰🇵"},{n:"Corea del Sur",t:"Asia/Seoul",f:"🇰🇷"},{n:"Costa de Marfil",t:"Africa/Abidjan",f:"🇨🇮"},{n:"Costa Rica",t:"America/Costa_Rica",f:"🇨🇷"},{n:"Croacia",t:"Europe/Zagreb",f:"🇭🇷"},{n:"Cuba",t:"America/Havana",f:"🇨🇺"},{n:"Dinamarca",t:"Europe/Copenhagen",f:"🇩🇰"},{n:"Dominica",t:"America/Dominica",f:"🇩🇲"},
+    {n:"Ecuador",t:"America/Guayaquil",f:"🇪🇨"},{n:"Egipto",t:"Africa/Cairo",f:"🇪🇬"},{n:"El Salvador",t:"America/El_Salvador",f:"🇸🇻"},{n:"EAU",t:"Asia/Dubai",f:"🇦🇪"},{n:"Eritrea",t:"Africa/Asmara",f:"🇪🇷"},{n:"Eslovaquia",t:"Europe/Bratislava",f:"🇸🇰"},{n:"Eslovenia",t:"Europe/Ljubljana",f:"🇸🇮"},{n:"España",t:"Europe/Madrid",f:"🇪🇸"},{n:"USA",t:"America/New_York",f:"🇺🇸"},{n:"Estonia",t:"Europe/Tallinn",f:"🇪🇪"},
+    {n:"Esuatini",t:"Africa/Mbabane",f:"🇸🇿"},{n:"Etiopía",t:"Africa/Addis_Ababa",f:"🇪🇹"},{n:"Filipinas",t:"Asia/Manila",f:"🇵🇭"},{n:"Finlandia",t:"Europe/Helsinki",f:"🇫🇮"},{n:"Fiyi",t:"Pacific/Fiji",f:"🇫🇯"},{n:"Francia",t:"Europe/Paris",f:"🇫🇷"},{n:"Gabón",t:"Africa/Libreville",f:"🇬🇦"},{n:"Gambia",t:"Africa/Banjul",f:"🇬🇲"},{n:"Georgia",t:"Asia/Tbilisi",f:"🇬🇪"},{n:"Ghana",t:"Africa/Accra",f:"🇬🇭"},
+    {n:"Granada",t:"America/Grenada",f:"🇬🇩"},{n:"Grecia",t:"Europe/Athens",f:"🇬🇷"},{n:"Guatemala",t:"America/Guatemala",f:"🇬🇹"},{n:"Guyana",t:"America/Guyana",f:"🇬🇾"},{n:"Guinea",t:"Africa/Conakry",f:"🇬🇳"},{n:"Guinea-Bisáu",t:"Africa/Bissau",f:"🇬🇼"},{n:"Guinea Ecuatorial",t:"Africa/Malabo",f:"🇬🇶"},{n:"Haití",t:"America/Port-au-Prince",f:"🇭🇹"},{n:"Honduras",t:"America/Tegucigalpa",f:"🇭🇳"},{n:"Hungría",t:"Europe/Budapest",f:"🇭🇺"},
+    {n:"India",t:"Asia/Kolkata",f:"🇮🇳"},{n:"Indonesia",t:"Asia/Jakarta",f:"🇮🇩"},{n:"Irak",t:"Asia/Baghdad",f:"🇮🇶"},{n:"Irán",t:"Asia/Tehran",f:"🇮🇷"},{n:"Irlanda",t:"Europe/Dublin",f:"🇮🇪"},{n:"Islandia",t:"Atlantic/Reykjavik",f:"🇮🇸"},{n:"Israel",t:"Asia/Jerusalem",f:"🇮🇱"},{n:"Italia",t:"Europe/Rome",f:"🇮🇹"},{n:"Jamaica",t:"America/Jamaica",f:"🇯🇲"},{n:"Japón",t:"Asia/Tokyo",f:"🇯🇵"},
+    {n:"Jordania",t:"Asia/Amman",f:"🇯🇴"},{n:"Kazajistán",t:"Asia/Almaty",f:"🇰🇿"},{n:"Kenia",t:"Africa/Nairobi",f:"🇰🇪"},{n:"Kirguistán",t:"Asia/Bishkek",f:"🇰🇬"},{n:"Kiribati",t:"Pacific/Tarawa",f:"🇰🇮"},{n:"Kuwait",t:"Asia/Kuwait",f:"🇰🇼"},{n:"Laos",t:"Asia/Vientiane",f:"🇱🇦"},{n:"Lesoto",t:"Africa/Maseru",f:"🇱🇸"},{n:"Letonia",t:"Europe/Riga",f:"🇱🇻"},{n:"Líbano",t:"Asia/Beirut",f:"🇱🇧"},
+    {n:"Liberia",t:"Africa/Monrovia",f:"🇱🇷"},{n:"Libia",t:"Africa/Tripoli",f:"🇱🇾"},{n:"Liechtenstein",t:"Europe/Vaduz",f:"🇱🇮"},{n:"Lituania",t:"Europe/Vilnius",f:"🇱🇹"},{n:"Luxemburgo",t:"Europe/Luxembourg",f:"🇱🇺"},{n:"Madagascar",t:"Indian/Antananarivo",f:"🇲🇬"},{n:"Malasia",t:"Asia/Kuala_Lumpur",f:"🇲🇾"},{n:"Malaui",t:"Africa/Blantyre",f:"🇲🇼"},{n:"Maldivas",t:"Indian/Maldives",f:"🇲🇻"},{n:"Malí",t:"Africa/Bamako",f:"🇲🇱"},
+    {n:"Malta",t:"Europe/Malta",f:"🇲🇹"},{n:"Marruecos",t:"Africa/Casablanca",f:"🇲🇦"},{n:"Mauricio",t:"Indian/Mauritius",f:"🇲🇺"},{n:"Mauritania",t:"Africa/Nouakchott",f:"🇲🇷"},{n:"México",t:"America/Mexico_City",f:"🇲🇽"},{n:"Micronesia",t:"Pacific/Chuuk",f:"🇫🇲"},{n:"Moldavia",t:"Europe/Chisinau",f:"🇲🇩"},{n:"Mónaco",t:"Europe/Monaco",f:"🇲🇨"},{n:"Mongolia",t:"Asia/Ulaanbaatar",f:"🇲🇳"},{n:"Montenegro",t:"Europe/Podgorica",f:"🇲🇪"},
+    {n:"Mozambique",t:"Africa/Maputo",f:"🇲🇿"},{n:"Namibia",t:"Africa/Windhoek",f:"🇳🇦"},{n:"Nauru",t:"Pacific/Nauru",f:"🇳🇷"},{n:"Nepal",t:"Asia/Kathmandu",f:"🇳🇵"},{n:"Nicaragua",t:"America/Managua",f:"🇳🇮"},{n:"Níger",t:"Africa/Niamey",f:"🇳🇪"},{n:"Nigeria",t:"Africa/Lagos",f:"🇳🇬"},{n:"Noruega",t:"Europe/Oslo",f:"🇳🇴"},{n:"Nueva Zelanda",t:"Pacific/Auckland",f:"🇳🇿"},{n:"Omán",t:"Asia/Muscat",f:"🇴🇲"},
+    {n:"Países Bajos",t:"Europe/Amsterdam",f:"🇳🇱"},{n:"Pakistán",t:"Asia/Karachi",f:"🇵🇰"},{n:"Palaos",t:"Pacific/Palau",f:"🇵🇼"},{n:"Palestina",t:"Asia/Gaza",f:"🇵🇸"},{n:"Panamá",t:"America/Panama",f:"🇵🇦"},{n:"Papúa Nueva Guinea",t:"Pacific/Port_Moresby",f:"🇵🇬"},{n:"Paraguay",t:"America/Asuncion",f:"🇵🇾"},{n:"Perú",t:"America/Lima",f:"🇵🇪"},{n:"Polonia",t:"Europe/Warsaw",f:"🇵🇱"},{n:"Portugal",t:"Europe/Lisbon",f:"🇵🇹"},
+    {n:"Reino Unido",t:"Europe/London",f:"🇬🇧"},{n:"Rep. Centroafricana",t:"Africa/Bangui",f:"🇨🇫"},{n:"Rep. Checa",t:"Europe/Prague",f:"🇨🇿"},{n:"Rep. del Congo",t:"Africa/Brazzaville",f:"🇨🇬"},{n:"Rep. Dem. del Congo",t:"Africa/Kinshasa",f:"🇨🇩"},{n:"Rep. Dominicana",t:"America/Santo_Domingo",f:"🇩🇴"},{n:"Ruanda",t:"Africa/Kigali",f:"🇷🇼"},{n:"Rumanía",t:"Europe/Bucharest",f:"🇷🇴"},{n:"Rusia",t:"Europe/Moscow",f:"🇷🇺"},{n:"Samoa",t:"Pacific/Apia",f:"🇼🇸"},
+    {n:"San Cristóbal y Nieves",t:"America/St_Kitts",f:"🇰🇳"},{n:"San Marino",t:"Europe/San_Marino",f:"🇸🇲"},{n:"San Vicente y Granadinas",t:"America/St_Vincent",f:"🇻🇨"},{n:"Santa Lucía",t:"America/St_Lucia",f:"🇱🇨"},{n:"Santo Tomé y Príncipe",t:"Africa/Sao_Tome",f:"🇸🇹"},{n:"Senegal",t:"Africa/Dakar",f:"🇸🇳"},{n:"Serbia",t:"Europe/Belgrade",f:"🇷🇸"},{n:"Seychelles",t:"Indian/Mahe",f:"🇸🇨"},{n:"Sierra Leona",t:"Africa/Freetown",f:"🇸🇱"},{n:"Singapur",t:"Asia/Singapore",f:"🇸🇬"},
+    {n:"Siria",t:"Asia/Damascus",f:"🇸🇾"},{n:"Somalia",t:"Africa/Mogadishu",f:"🇸🇴"},{n:"Sri Lanka",t:"Asia/Colombo",f:"🇱🇰"},{n:"Sudáfrica",t:"Africa/Johannesburg",f:"🇿🇦"},{n:"Sudán",t:"Africa/Khartoum",f:"🇸🇩"},{n:"Sudán del Sur",t:"Africa/Juba",f:"🇸🇸"},{n:"Suecia",t:"Europe/Stockholm",f:"🇸🇪"},{n:"Suiza",t:"Europe/Zurich",f:"🇨🇭"},{n:"Surinam",t:"America/Paramaribo",f:"🇸🇷"},{n:"Tailandia",t:"Asia/Bangkok",f:"🇹🇭"},
+    {n:"Taiwán",t:"Asia/Taipei",f:"🇹🇼"},{n:"Tanzania",t:"Africa/Dar_es_Salaam",f:"🇹🇿"},{n:"Tayikistán",t:"Asia/Dushanbe",f:"🇹🇯"},{n:"Timor Oriental",t:"Asia/Dili",f:"🇹🇱"},{n:"Togo",t:"Africa/Lome",f:"🇹🇬"},{n:"Tonga",t:"Pacific/Tongatapu",f:"🇹🇴"},{n:"Trinidad y Tobago",t:"America/Port_of_Spain",f:"🇹🇹"},{n:"Túnez",t:"Africa/Tunis",f:"🇹🇳"},{n:"Turkmenistán",t:"Asia/Ashgabat",f:"🇹🇲"},{n:"Turquía",t:"Europe/Istanbul",f:"🇹🇷"},
+    {n:"Tuvalu",t:"Pacific/Funafuti",f:"🇹🇻"},{n:"Ucrania",t:"Europe/Kyiv",f:"🇺🇦"},{n:"Uganda",t:"Africa/Kampala",f:"🇺🇬"},{n:"Uruguay",t:"America/Montevideo",f:"🇺🇾"},{n:"Uzbekistán",t:"Asia/Tashkent",f:"🇺🇿"},{n:"Vanuatu",t:"Pacific/Efate",f:"🇻🇺"},{n:"Vaticano",t:"Europe/Vatican",f:"🇻🇦"},{n:"Venezuela",t:"America/Caracas",f:"🇻🇪"},{n:"Vietnam",t:"Asia/Ho_Chi_Minh",f:"🇻🇳"},{n:"Yemen",t:"Asia/Aden",f:"🇾🇪"},
+    {n:"Yibuti",t:"Africa/Djibouti",f:"🇩🇯"},{n:"Zambia",t:"Africa/Lusaka",f:"🇿🇲"},{n:"Zimbabue",t:"Africa/Harare",f:"🇿🇼"}
+];
+
+countries.sort((a, b) => a.n.localeCompare(b.n));
+
+const list = document.getElementById("list");
+countries.forEach(c => {
+    let div = document.createElement("div");
+    div.className = "item";
+    div.innerHTML = `<span class="flag">${c.f}</span><span class="name">${c.n}</span>`;
+    div.onclick = () => setCountry(c);
+    list.appendChild(div);
+});
+
+let current = countries.find(c => c.n === "México") || countries[0];
+setCountry(current);
+
+function setCountry(c){
+    current = c;
+    document.getElementById("countryName").innerHTML = `${c.f} ${c.n}`;
+}
+
+const canvas = document.getElementById("clock");
+const ctx = canvas.getContext("2d");
+const r = canvas.height / 2;
+ctx.translate(r, r);
+
+function draw(){
+    ctx.clearRect(-r, -r, canvas.width, canvas.height);
+
+    try {
+        const now = new Date(
+            new Date().toLocaleString("en-US", {timeZone: current.t})
+        );
+
+        let s = now.getSeconds();
+        let m = now.getMinutes();
+        let h = now.getHours() % 12;
+
+        ctx.beginPath();
+        ctx.arc(0, 0, r - 12, 0, Math.PI * 2);
+        ctx.fillStyle = "rgba(6, 9, 19, 0.75)"; /* Fondo oscuro para dar contraste */
+        ctx.fill();
+        ctx.lineWidth = 3;
+        ctx.strokeStyle = "rgba(0, 247, 255, 0.4)";
+        ctx.stroke();
+
+        for (let i = 0; i < 12; i++) {
+            ctx.beginPath();
+            const esPrincipal = (i % 3 === 0);
+            ctx.lineWidth = esPrincipal ? 3 : 1.5;
+            ctx.strokeStyle = esPrincipal ? "rgba(0, 247, 255, 0.8)" : "rgba(255, 255, 255, 0.2)";
+            ctx.moveTo(0, -(r - 24));
+            ctx.lineTo(0, -(r - 14));
+            ctx.stroke();
+            ctx.rotate(Math.PI / 6);
+        }
+
+        drawHand((h * Math.PI / 6) + (m * Math.PI / 360), r * 0.45, 6, "#ffffff");
+        drawHand((m * Math.PI / 30), r * 0.7, 4, "#00f7ff");
+        drawHand((s * Math.PI / 30), r * 0.8, 2, "#ff2a5f");
+
+        ctx.beginPath();
+        ctx.arc(0, 0, 5, 0, Math.PI * 2);
+        ctx.fillStyle = "#ff2a5f";
+        ctx.fill();
+
+        document.getElementById("time").innerText = now.toLocaleTimeString('es-ES', {hour12: false});
+        
+        const opcionesFecha = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+        document.getElementById("date").innerText = now.toLocaleDateString('es-ES', opcionesFecha);
+
+    } catch (e) {
+        document.getElementById("time").innerText = "--:--:--";
+        document.getElementById("date").innerText = "Zona no soportada";
+    }
+
+    requestAnimationFrame(draw);
+}
+
+function drawHand(pos, len, w, color){
+    ctx.beginPath();
+    ctx.lineWidth = w;
+    ctx.strokeStyle = color;
+    ctx.lineCap = "round";
+
+    ctx.rotate(pos);
+    ctx.moveTo(0, 0);
+    ctx.lineTo(0, -len);
+    ctx.stroke();
+    ctx.rotate(-pos);
+}
+
+draw();
+
+function filter(){
+    let val = document.getElementById("search").value.toLowerCase();
+    document.querySelectorAll(".item").forEach(el => {
+        const text = el.querySelector(".name").innerText.toLowerCase();
+        el.style.display = text.includes(val) ? "flex" : "none";
+    });
+}
+</script>
+
+</body>
+</html>
